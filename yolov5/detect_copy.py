@@ -33,6 +33,8 @@ from pathlib import Path
 import torch
 import numpy as np
 
+import wanwan
+
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -46,6 +48,26 @@ from utils.general import (LOGGER, Profile, check_file, check_img_size, check_im
                            increment_path, non_max_suppression, print_args, scale_coords, strip_optimizer, xyxy2xywh)
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, smart_inference_mode
+
+def callback(x):
+	global H_low,H_high,S_low,S_high,V_low,V_high
+	#assign trackbar position value to H,S,V High and low variable
+	H_low = cv2.getTrackbarPos('low H','controls')
+	H_high = cv2.getTrackbarPos('high H','controls')
+	S_low = cv2.getTrackbarPos('low S','controls')
+	S_high = cv2.getTrackbarPos('high S','controls')
+	V_low = cv2.getTrackbarPos('low V','controls')
+	V_high = cv2.getTrackbarPos('high V','controls')
+
+
+
+H_low = 0
+H_high = 179
+S_low= 0
+S_high = 255
+V_low= 0
+V_high = 255
+
 
 
 @smart_inference_mode()
@@ -78,6 +100,9 @@ def run(
         dnn=False,  # use OpenCV DNN for ONNX inference
         vid_stride=1,  # video frame-rate stride
 ):
+
+
+
     source = str(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
@@ -109,6 +134,20 @@ def run(
     # Run inference
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
+
+    cv2.namedWindow('controls',2)
+    cv2.resizeWindow("controls", 500,200)
+    # create trackbars for high,low H,S,V 
+    cv2.createTrackbar('low H','controls',0,179,callback)
+    cv2.createTrackbar('high H','controls',179,179,callback)
+
+    cv2.createTrackbar('low S','controls',0,255,callback)
+    cv2.createTrackbar('high S','controls',255,255,callback)
+
+    cv2.createTrackbar('low V','controls',0,255,callback)
+    cv2.createTrackbar('high V','controls',255,255,callback)
+
+
     for path, im, im0s, vid_cap, s in dataset:
         with dt[0]:
             im = torch.from_numpy(im).to(device)
@@ -130,6 +169,7 @@ def run(
         # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
 
         # Process predictions
+
         for i, det in enumerate(pred):  # per image
             seen += 1
             if webcam:  # batch_size >= 1
@@ -151,10 +191,14 @@ def run(
                 
                 print("detとはなにか",det)
                 print("det[:, -1].unique()",det[:, -1].unique())
-                # Print results
+                
+                
+
+                            # Print results
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+                
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
@@ -215,14 +259,17 @@ def run(
                     windows.append(p)
                     cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
                     cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
+
+
                 cv2.imshow("a",im0)
 
                 im0 = cv2.cvtColor(im0, cv2.COLOR_BGR2HSV) #全体画像をhsv化
-                im0 = cv2.inRange(im0, np.array([55, 19,0]), np.array([93, 119, 183])) #欲しい色を白にする
+                hsv_low = np.array([H_low, S_low, V_low], np.uint8)
+                hsv_high = np.array([H_high, S_high, V_high], np.uint8)
+
+                # im0 = cv2.inRange(im0, np.array([55, 19,0]), np.array([93, 119, 183])) #欲しい色を白にする
+                im0 = cv2.inRange(im0,hsv_low, hsv_high)
                 print("shape",im0.shape)
-                
-                
-                # 画素数
 
 
                 # ちょっとここの処理が怪しいのであとで見たほうが良い。たまに人以外の座標が出てくる
@@ -250,6 +297,8 @@ def run(
                     print("white_count",white_count)
                     ratio = white_count / box_pixel_size
                     print("ratio",ratio)
+                    wanwan.WanWanWan()
+                        
 
                 cv2.imshow(str(p), im0)
                 cv2.waitKey(1)  # 1 millisecond

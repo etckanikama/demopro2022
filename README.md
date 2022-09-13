@@ -1,7 +1,10 @@
 # 環境
 - python3.8.10
 
-自分の場合は、pyenv activate 3.7.2を実行して環境を作成している
+自分の場合は、demopro2022/yolov5内で以下を実行して環境を作成している
+```
+pyenv activate 3.7.2
+```
 (python3.6.2より前のバージョンはtorchが入らないので注意, pyenvとかvirtualenvの環境を作ってください)
 - ubuntu20.04
 - yolov5
